@@ -3,7 +3,7 @@ Firmware for Nordic MCUs used in the Mitosis Keyboard, contains precompiled .hex
 
 ## Install dependencies
 
-Tested on Ubuntu 16.04.2, but should be able to find alternatives on all distros. 
+Tested on Ubuntu 16.04.2, but should be able to find alternatives on all distros.
 
 ```
 sudo apt install openocd gcc-arm-none-eabi
@@ -13,7 +13,7 @@ sudo apt install openocd gcc-arm-none-eabi
 
 Nordic does not allow redistribution of their SDK or components, so download and extract from their site:
 
-https://www.nordicsemi.com/eng/nordic/Products/nRF5-SDK/nRF5-SDK-v12-zip/54291
+https://developer.nordicsemi.com/nRF5_SDK/nRF5_SDK_v11.x.x/nRF5_SDK_11.0.0_89a8197.zip
 
 Firmware written and tested with version 11
 
@@ -86,22 +86,3 @@ cd mitosis/mitosis-keyboard-basic
 ./program.sh
 ```
 An openocd session should be running in another terminal, as this script sends commands to it.
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
