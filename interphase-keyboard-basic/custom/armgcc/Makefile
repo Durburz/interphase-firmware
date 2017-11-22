@@ -1,9 +1,9 @@
-PROJECT_NAME := mitosis-receiver-basic
+PROJECT_NAME := interphase-keyboard-basic
 
 export OUTPUT_FILENAME
 #MAKEFILE_NAME := $(CURDIR)/$(word $(words $(MAKEFILE_LIST)),$(MAKEFILE_LIST))
 MAKEFILE_NAME := $(MAKEFILE_LIST)
-MAKEFILE_DIR := $(dir $(MAKEFILE_NAME) ) 
+MAKEFILE_DIR := $(dir $(MAKEFILE_NAME) )
 
 TEMPLATE_PATH = ../../../../components/toolchain/gcc
 ifeq ($(OS),Windows_NT)
@@ -17,7 +17,7 @@ RM := rm -rf
 
 #echo suspend
 ifeq ("$(VERBOSE)","1")
-NO_ECHO := 
+NO_ECHO :=
 else
 NO_ECHO := @
 endif
@@ -39,16 +39,12 @@ remduplicates = $(strip $(if $1,$(firstword $1) $(call remduplicates,$(filter-ou
 C_SOURCE_FILES += \
 $(abspath ../../../../components/toolchain/system_nrf51.c) \
 $(abspath ../../main.c) \
-$(abspath ../../../../components/libraries/util/app_error.c) \
-$(abspath ../../../../components/libraries/util/app_error_weak.c) \
-$(abspath ../../../../components/libraries/fifo/app_fifo.c) \
-$(abspath ../../../../components/libraries/util/app_util_platform.c) \
-$(abspath ../../../../components/libraries/util/nrf_assert.c) \
-$(abspath ../../../../components/libraries/uart/retarget.c) \
-$(abspath ../../../../components/libraries/uart/app_uart_fifo.c) \
 $(abspath ../../../../components/drivers_nrf/delay/nrf_delay.c) \
+$(abspath ../../../../components/drivers_nrf/clock/nrf_drv_clock.c) \
+$(abspath ../../../../components/libraries/util/app_util_platform.c) \
 $(abspath ../../../../components/drivers_nrf/common/nrf_drv_common.c) \
-$(abspath ../../../../components/drivers_nrf/uart/nrf_drv_uart.c) \
+$(abspath ../../../../components/drivers_nrf/rtc/nrf_drv_rtc.c) \
+
 
 #assembly files common to all targets
 ASM_SOURCE_FILES  = $(abspath ../../../../components/toolchain/gcc/gcc_startup_nrf51.s)
@@ -56,24 +52,23 @@ ASM_SOURCE_FILES  = $(abspath ../../../../components/toolchain/gcc/gcc_startup_n
 #assembly files common to all targets
 LIBS  = $(abspath ../../../../components/properitary_rf/gzll/gcc/gzll_gcc.a)
 
-
 #includes common to all targets
-INC_PATHS += -I$(abspath ../../config)
-INC_PATHS += -I$(abspath ../../../../components/drivers_nrf/nrf_soc_nosd)
+INC_PATHS  = -I$(abspath ../../config)
 INC_PATHS += -I$(abspath ../../../../components/device)
-INC_PATHS += -I$(abspath ../../../../components/libraries/uart)
-INC_PATHS += -I$(abspath ../../../../components/drivers_nrf/hal)
-INC_PATHS += -I$(abspath ../../../../components/drivers_nrf/delay)
 INC_PATHS += -I$(abspath ../../../../components/toolchain/CMSIS/Include)
-INC_PATHS += -I$(abspath ../..)
-INC_PATHS += -I$(abspath ../../../../components/libraries/util)
-INC_PATHS += -I$(abspath ../../../../components/drivers_nrf/uart)
-INC_PATHS += -I$(abspath ../../../../components/drivers_nrf/common)
-INC_PATHS += -I$(abspath ../../../../components/toolchain)
-INC_PATHS += -I$(abspath ../../../../components/drivers_nrf/config)
-INC_PATHS += -I$(abspath ../../../../components/libraries/fifo)
-INC_PATHS += -I$(abspath ../../../../components/toolchain/gcc)
 INC_PATHS += -I$(abspath ../../../../components/properitary_rf/gzll)
+INC_PATHS += -I$(abspath ../../../../components/drivers_nrf/hal)
+INC_PATHS += -I$(abspath ../../../../components/toolchain/gcc)
+INC_PATHS += -I$(abspath ../../../../components/drivers_nrf/delay)
+INC_PATHS += -I$(abspath ../../../../examples/bsp)
+INC_PATHS += -I$(abspath ../../../../components/toolchain)
+INC_PATHS += -I$(abspath ../../../../components/drivers_nrf/nrf_soc_nosd)
+INC_PATHS += -I$(abspath ../../../../components/drivers_nrf/common)
+INC_PATHS += -I$(abspath ../../../../components/drivers_nrf/clock)
+INC_PATHS += -I$(abspath ../../../../components/libraries/util)
+INC_PATHS += -I$(abspath ../../../../components/drivers_nrf/config)
+INC_PATHS += -I$(abspath ../../../../components/drivers_nrf/rtc)
+
 
 OBJECT_DIRECTORY = _build
 LISTING_DIRECTORY = $(OBJECT_DIRECTORY)
@@ -95,7 +90,7 @@ CFLAGS += -Wno-unused-variable
 CFLAGS += -mfloat-abi=soft
 # keep every function in separate section. This will allow linker to dump unused functions
 CFLAGS += -ffunction-sections -fdata-sections -fno-strict-aliasing
-CFLAGS += -fno-builtin --short-enums 
+CFLAGS += -fno-builtin --short-enums
 # keep every function in separate section. This will allow linker to dump unused functions
 LDFLAGS += -Xlinker -Map=$(LISTING_DIRECTORY)/$(OUTPUT_FILENAME).map
 LDFLAGS += -mthumb -mabi=aapcs -L $(TEMPLATE_PATH) -T$(LINKER_SCRIPT)
@@ -110,6 +105,7 @@ LDFLAGS += -Wl,--no-wchar-size-warning
 # Assembler flags
 ASMFLAGS += -x assembler-with-cpp
 ASMFLAGS += -DNRF51
+ASMFLAGS += -DGAZELL_PRESENT
 ASMFLAGS += -DBOARD_CUSTOM
 ASMFLAGS += -DBSP_DEFINES_ONLY
 
@@ -140,7 +136,7 @@ vpath %.s $(ASM_PATHS)
 OBJECTS = $(C_OBJECTS) $(ASM_OBJECTS)
 
 nrf51822_xxac: OUTPUT_FILENAME := nrf51822_xxac
-nrf51822_xxac: LINKER_SCRIPT=uart_gcc_nrf51.ld
+nrf51822_xxac: LINKER_SCRIPT=gzll_gcc_nrf51.ld
 
 nrf51822_xxac: $(BUILD_DIRECTORIES) $(OBJECTS)
 	@echo Linking target: $(OUTPUT_FILENAME).out
@@ -182,7 +178,7 @@ genbin:
 	$(NO_ECHO)$(OBJCOPY) -O binary $(OUTPUT_BINARY_DIRECTORY)/$(OUTPUT_FILENAME).out $(OUTPUT_BINARY_DIRECTORY)/$(OUTPUT_FILENAME).bin
 
 ## Create binary .hex file from the .out file
-genhex: 
+genhex:
 	@echo Preparing: $(OUTPUT_FILENAME).hex
 	$(NO_ECHO)$(OBJCOPY) -O ihex $(OUTPUT_BINARY_DIRECTORY)/$(OUTPUT_FILENAME).out $(OUTPUT_BINARY_DIRECTORY)/$(OUTPUT_FILENAME).hex
 echosize:

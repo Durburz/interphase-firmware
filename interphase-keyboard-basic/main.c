@@ -2,7 +2,7 @@
 #define COMPILE_RIGHT
 //#define COMPILE_LEFT
 
-#include "mitosis.h"
+#include "interphase.h"
 #include "nrf_drv_config.h"
 #include "nrf_gzll.h"
 #include "nrf_gpio.h"
@@ -20,10 +20,10 @@ const nrf_drv_rtc_t rtc_deb = NRF_DRV_RTC_INSTANCE(1); /**< Declaring an instanc
 
 
 // Define payload length
-#define TX_PAYLOAD_LENGTH 3 ///< 3 byte payload length when transmitting
+#define TX_PAYLOAD_LENGTH 5 ///< 5 byte payload length when transmitting
 
 // Data and acknowledgement payloads
-static uint8_t data_payload[TX_PAYLOAD_LENGTH];                ///< Payload to send to Host. 
+static uint8_t data_payload[TX_PAYLOAD_LENGTH];                ///< Payload to send to Host.
 static uint8_t ack_payload[NRF_GZLL_CONST_MAX_PAYLOAD_LENGTH]; ///< Placeholder for received ACK payloads from Host.
 
 // Debounce time (dependent on tick frequency)
@@ -31,78 +31,64 @@ static uint8_t ack_payload[NRF_GZLL_CONST_MAX_PAYLOAD_LENGTH]; ///< Placeholder 
 #define ACTIVITY 500
 
 // Key buffers
-static uint32_t keys, keys_snapshot;
+static uint8_t keys[ROWS];, keys_snapshot[ROWS];;
 static uint32_t debounce_ticks, activity_ticks;
 static volatile bool debouncing = false;
 
 // Debug helper variables
-static volatile bool init_ok, enable_ok, push_ok, pop_ok, tx_success;  
+static volatile bool init_ok, enable_ok, push_ok, pop_ok, tx_success;
 
 // Setup switch pins with pullups
 static void gpio_config(void)
 {
-    nrf_gpio_cfg_sense_input(S01, NRF_GPIO_PIN_PULLUP, NRF_GPIO_PIN_SENSE_LOW);
-    nrf_gpio_cfg_sense_input(S02, NRF_GPIO_PIN_PULLUP, NRF_GPIO_PIN_SENSE_LOW);
-    nrf_gpio_cfg_sense_input(S03, NRF_GPIO_PIN_PULLUP, NRF_GPIO_PIN_SENSE_LOW);
-    nrf_gpio_cfg_sense_input(S04, NRF_GPIO_PIN_PULLUP, NRF_GPIO_PIN_SENSE_LOW);
-    nrf_gpio_cfg_sense_input(S05, NRF_GPIO_PIN_PULLUP, NRF_GPIO_PIN_SENSE_LOW);
-    nrf_gpio_cfg_sense_input(S06, NRF_GPIO_PIN_PULLUP, NRF_GPIO_PIN_SENSE_LOW);
-    nrf_gpio_cfg_sense_input(S07, NRF_GPIO_PIN_PULLUP, NRF_GPIO_PIN_SENSE_LOW);
-    nrf_gpio_cfg_sense_input(S08, NRF_GPIO_PIN_PULLUP, NRF_GPIO_PIN_SENSE_LOW);
-    nrf_gpio_cfg_sense_input(S09, NRF_GPIO_PIN_PULLUP, NRF_GPIO_PIN_SENSE_LOW);
-    nrf_gpio_cfg_sense_input(S10, NRF_GPIO_PIN_PULLUP, NRF_GPIO_PIN_SENSE_LOW);
-    nrf_gpio_cfg_sense_input(S11, NRF_GPIO_PIN_PULLUP, NRF_GPIO_PIN_SENSE_LOW);
-    nrf_gpio_cfg_sense_input(S12, NRF_GPIO_PIN_PULLUP, NRF_GPIO_PIN_SENSE_LOW);
-    nrf_gpio_cfg_sense_input(S13, NRF_GPIO_PIN_PULLUP, NRF_GPIO_PIN_SENSE_LOW);
-    nrf_gpio_cfg_sense_input(S14, NRF_GPIO_PIN_PULLUP, NRF_GPIO_PIN_SENSE_LOW);
-    nrf_gpio_cfg_sense_input(S15, NRF_GPIO_PIN_PULLUP, NRF_GPIO_PIN_SENSE_LOW);
-    nrf_gpio_cfg_sense_input(S16, NRF_GPIO_PIN_PULLUP, NRF_GPIO_PIN_SENSE_LOW);
-    nrf_gpio_cfg_sense_input(S17, NRF_GPIO_PIN_PULLUP, NRF_GPIO_PIN_SENSE_LOW);
-    nrf_gpio_cfg_sense_input(S18, NRF_GPIO_PIN_PULLUP, NRF_GPIO_PIN_SENSE_LOW);
-    nrf_gpio_cfg_sense_input(S19, NRF_GPIO_PIN_PULLUP, NRF_GPIO_PIN_SENSE_LOW);
-    nrf_gpio_cfg_sense_input(S20, NRF_GPIO_PIN_PULLUP, NRF_GPIO_PIN_SENSE_LOW);
-    nrf_gpio_cfg_sense_input(S21, NRF_GPIO_PIN_PULLUP, NRF_GPIO_PIN_SENSE_LOW);
-    nrf_gpio_cfg_sense_input(S22, NRF_GPIO_PIN_PULLUP, NRF_GPIO_PIN_SENSE_LOW);
-    nrf_gpio_cfg_sense_input(S23, NRF_GPIO_PIN_PULLUP, NRF_GPIO_PIN_SENSE_LOW);
+    nrf_gpio_cfg_sense_input(C01, NRF_GPIO_PIN_PULLUP, NRF_GPIO_PIN_SENSE_LOW);
+    nrf_gpio_cfg_sense_input(C02, NRF_GPIO_PIN_PULLUP, NRF_GPIO_PIN_SENSE_LOW);
+    nrf_gpio_cfg_sense_input(C03, NRF_GPIO_PIN_PULLUP, NRF_GPIO_PIN_SENSE_LOW);
+    nrf_gpio_cfg_sense_input(C04, NRF_GPIO_PIN_PULLUP, NRF_GPIO_PIN_SENSE_LOW);
+    nrf_gpio_cfg_sense_input(C05, NRF_GPIO_PIN_PULLUP, NRF_GPIO_PIN_SENSE_LOW);
+    nrf_gpio_cfg_sense_input(C06, NRF_GPIO_PIN_PULLUP, NRF_GPIO_PIN_SENSE_LOW);
+    nrf_gpio_cfg_sense_input(C07, NRF_GPIO_PIN_PULLUP, NRF_GPIO_PIN_SENSE_LOW);
+
+    nrf_gpio_cfg_output(R01);
+    nrf_gpio_cfg_output(R02);
+    nrf_gpio_cfg_output(R03);
+    nrf_gpio_cfg_output(R04);
+    nrf_gpio_cfg_output(R05);
+}
+
+// Return the key states of one row
+static uint32_t read_row(uint32_t row)
+{
+    uint32_t buff;
+    nrf_gpio_set(row);
+    buff = ~NRF_GPIO->IN & INPUT_MASK;
+    nrf_gpio_pin_toggle(row);
+    return buff;
 }
 
 // Return the key states, masked with valid key pins
-static uint32_t read_keys(void)
+static void read_keys(void)
 {
-    return ~NRF_GPIO->IN & INPUT_MASK;
+    keys_snapshot[0] = read_row(R01);
+    keys_snapshot[1] = read_row(R02);
+    keys_snapshot[2] = read_row(R03);
+    keys_snapshot[3] = read_row(R04);
+    keys_snapshot[4] = read_row(R05);
+    return;
+}
+
+// Compare key arrays
+static bool compare_keys(void) {
+  for(int i=0; i < ROWS; i++) {
+    if (keys_snapshot[i] != keys[i]) return 0;
+  }
+  return 1;
 }
 
 // Assemble packet and send to receiver
 static void send_data(void)
 {
-    data_payload[0] = ((keys & 1<<S01) ? 1:0) << 7 | \
-                      ((keys & 1<<S02) ? 1:0) << 6 | \
-                      ((keys & 1<<S03) ? 1:0) << 5 | \
-                      ((keys & 1<<S04) ? 1:0) << 4 | \
-                      ((keys & 1<<S05) ? 1:0) << 3 | \
-                      ((keys & 1<<S06) ? 1:0) << 2 | \
-                      ((keys & 1<<S07) ? 1:0) << 1 | \
-                      ((keys & 1<<S08) ? 1:0) << 0;
-
-    data_payload[1] = ((keys & 1<<S09) ? 1:0) << 7 | \
-                      ((keys & 1<<S10) ? 1:0) << 6 | \
-                      ((keys & 1<<S11) ? 1:0) << 5 | \
-                      ((keys & 1<<S12) ? 1:0) << 4 | \
-                      ((keys & 1<<S13) ? 1:0) << 3 | \
-                      ((keys & 1<<S14) ? 1:0) << 2 | \
-                      ((keys & 1<<S15) ? 1:0) << 1 | \
-                      ((keys & 1<<S16) ? 1:0) << 0;
-
-    data_payload[2] = ((keys & 1<<S17) ? 1:0) << 7 | \
-                      ((keys & 1<<S18) ? 1:0) << 6 | \
-                      ((keys & 1<<S19) ? 1:0) << 5 | \
-                      ((keys & 1<<S20) ? 1:0) << 4 | \
-                      ((keys & 1<<S21) ? 1:0) << 3 | \
-                      ((keys & 1<<S22) ? 1:0) << 2 | \
-                      ((keys & 1<<S23) ? 1:0) << 1 | \
-                      0 << 0;
-
-    nrf_gzll_add_packet_to_tx_fifo(PIPE_NUMBER, data_payload, TX_PAYLOAD_LENGTH);
+    nrf_gzll_add_packet_to_tx_fifo(PIPE_NUMBER, keys, TX_PAYLOAD_LENGTH);
 }
 
 // 8Hz held key maintenance, keeping the reciever keystates valid
@@ -118,12 +104,17 @@ static void handler_debounce(nrf_drv_rtc_int_type_t int_type)
     if (debouncing)
     {
         // if debouncing, check if current keystates equal to the snapshot
-        if (keys_snapshot == read_keys())
+        read_keys();
+        if (compare_keys())
         {
             // DEBOUNCE ticks of stable sampling needed before sending data
             debounce_ticks++;
             if (debounce_ticks == DEBOUNCE)
             {
+                for(int i=0; i < ROWS; i++)
+                {
+                  keys[i] = keys_snapshot[i];
+                }
                 keys = keys_snapshot;
                 send_data();
             }
@@ -138,9 +129,10 @@ static void handler_debounce(nrf_drv_rtc_int_type_t int_type)
     {
         // if the keystate is different from the last data
         // sent to the receiver, start debouncing
-        if (keys != read_keys())
+        read_keys();
+        if (compare_keys())
         {
-            keys_snapshot = read_keys();
+            read_keys();
             debouncing = true;
             debounce_ticks = 0;
         }
@@ -192,8 +184,8 @@ int main()
 {
     // Initialize Gazell
     nrf_gzll_init(NRF_GZLL_MODE_DEVICE);
-    
-    // Attempt sending every packet up to 100 times    
+
+    // Attempt sending every packet up to 100 times
     nrf_gzll_set_max_tx_attempts(100);
 
     // Addressing
@@ -204,7 +196,7 @@ int main()
     nrf_gzll_enable();
 
     // Configure 32kHz xtal oscillator
-    lfclk_config(); 
+    lfclk_config();
 
     // Configure RTC peripherals with ticks
     rtc_config();
@@ -222,7 +214,7 @@ int main()
     {
         __SEV();
         __WFE();
-        __WFE(); 
+        __WFE();
     }
 }
 
@@ -252,7 +244,7 @@ void GPIOTE_IRQHandler(void)
 
 void  nrf_gzll_device_tx_success(uint32_t pipe, nrf_gzll_device_tx_info_t tx_info)
 {
-    uint32_t ack_payload_length = NRF_GZLL_CONST_MAX_PAYLOAD_LENGTH;    
+    uint32_t ack_payload_length = NRF_GZLL_CONST_MAX_PAYLOAD_LENGTH;
 
     if (tx_info.payload_received_in_ack)
     {
@@ -264,7 +256,7 @@ void  nrf_gzll_device_tx_success(uint32_t pipe, nrf_gzll_device_tx_info_t tx_inf
 // no action is taken when a packet fails to send, this might need to change
 void nrf_gzll_device_tx_failed(uint32_t pipe, nrf_gzll_device_tx_info_t tx_info)
 {
-    
+
 }
 
 // Callbacks not needed
@@ -272,4 +264,3 @@ void nrf_gzll_host_rx_data_ready(uint32_t pipe, nrf_gzll_host_rx_info_t rx_info)
 {}
 void nrf_gzll_disabled()
 {}
-

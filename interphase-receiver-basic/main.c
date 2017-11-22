@@ -22,7 +22,7 @@
 
 
 // Define payload length
-#define TX_PAYLOAD_LENGTH 3 ///< 3 byte payload length
+#define TX_PAYLOAD_LENGTH 5 ///< 5 byte payload length
 
 // ticks for inactive keyboard
 #define INACTIVE 100000
@@ -34,12 +34,12 @@
   (byte & 0x08 ? '#' : '.'), \
   (byte & 0x04 ? '#' : '.'), \
   (byte & 0x02 ? '#' : '.'), \
-  (byte & 0x01 ? '#' : '.') 
+  (byte & 0x01 ? '#' : '.')
 
 
 // Data and acknowledgement payloads
-static uint8_t data_payload_left[NRF_GZLL_CONST_MAX_PAYLOAD_LENGTH];  ///< Placeholder for data payload received from host. 
-static uint8_t data_payload_right[NRF_GZLL_CONST_MAX_PAYLOAD_LENGTH];  ///< Placeholder for data payload received from host. 
+static uint8_t data_payload_left[NRF_GZLL_CONST_MAX_PAYLOAD_LENGTH];  ///< Placeholder for data payload received from host.
+static uint8_t data_payload_right[NRF_GZLL_CONST_MAX_PAYLOAD_LENGTH];  ///< Placeholder for data payload received from host.
 static uint8_t ack_payload[TX_PAYLOAD_LENGTH];                   ///< Payload to attach to ACK sent to device.
 static uint8_t data_buffer[10];
 
@@ -93,7 +93,7 @@ int main(void)
     // Addressing
     nrf_gzll_set_base_address_0(0x01020304);
     nrf_gzll_set_base_address_1(0x05060708);
-  
+
     // Load data into TX queue
     ack_payload[0] = 0x55;
     nrf_gzll_add_packet_to_tx_fifo(0, data_payload_left, TX_PAYLOAD_LENGTH);
@@ -142,7 +142,7 @@ int main(void)
         if (packet_received_right)
         {
             packet_received_right = false;
-            
+
             data_buffer[1] = ((data_payload_right[0] & 1<<7) ? 1:0) << 0 |
                              ((data_payload_right[0] & 1<<6) ? 1:0) << 1 |
                              ((data_payload_right[0] & 1<<5) ? 1:0) << 2 |
@@ -204,13 +204,13 @@ int main(void)
                    BYTE_TO_BINARY(data_buffer[6]), \
                    BYTE_TO_BINARY(data_buffer[7]), \
                    BYTE_TO_BINARY(data_buffer[8]), \
-                   BYTE_TO_BINARY(data_buffer[9]));   
+                   BYTE_TO_BINARY(data_buffer[9]));
             nrf_delay_us(100);
             */
         }
         // allowing UART buffers to clear
         nrf_delay_us(10);
-        
+
         // if no packets recieved from keyboards in a few seconds, assume either
         // out of range, or sleeping due to no keys pressed, update keystates to off
         left_active++;
@@ -244,9 +244,9 @@ void nrf_gzll_disabled() {}
 
 // If a data packet was received, identify half, and throw flag
 void nrf_gzll_host_rx_data_ready(uint32_t pipe, nrf_gzll_host_rx_info_t rx_info)
-{   
+{
     uint32_t data_payload_length = NRF_GZLL_CONST_MAX_PAYLOAD_LENGTH;
-    
+
     if (pipe == 0)
     {
         packet_received_left = true;
@@ -261,7 +261,7 @@ void nrf_gzll_host_rx_data_ready(uint32_t pipe, nrf_gzll_host_rx_info_t rx_info)
         // Pop packet and write first byte of the payload to the GPIO port.
         nrf_gzll_fetch_packet_from_rx_fifo(pipe, data_payload_right, &data_payload_length);
     }
-    
+
     // not sure if required, I guess if enough packets are missed during blocking uart
     nrf_gzll_flush_rx_fifo(pipe);
 
