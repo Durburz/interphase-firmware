@@ -1,6 +1,6 @@
 
-#define COMPILE_RIGHT
-//#define COMPILE_LEFT
+//#define COMPILE_RIGHT
+#define COMPILE_LEFT
 
 #include "interphase.h"
 #include "nrf_drv_config.h"
@@ -31,7 +31,7 @@ static uint8_t ack_payload[NRF_GZLL_CONST_MAX_PAYLOAD_LENGTH]; ///< Placeholder 
 #define ACTIVITY 500
 
 // Key buffers
-static uint8_t keys[ROWS];, keys_snapshot[ROWS];;
+static uint8_t keys[ROWS], keys_snapshot[ROWS];
 static uint32_t debounce_ticks, activity_ticks;
 static volatile bool debouncing = false;
 
@@ -85,6 +85,14 @@ static bool compare_keys(void) {
   return 1;
 }
 
+// Check for available key presses
+static bool check_pressed(void) {
+  for(int i=0; i < ROWS; i++) {
+    if (keys_snapshot[i] == 1) return 1;
+  }
+  return 0;
+}
+
 // Assemble packet and send to receiver
 static void send_data(void)
 {
@@ -115,7 +123,6 @@ static void handler_debounce(nrf_drv_rtc_int_type_t int_type)
                 {
                   keys[i] = keys_snapshot[i];
                 }
-                keys = keys_snapshot;
                 send_data();
             }
         }
@@ -139,7 +146,8 @@ static void handler_debounce(nrf_drv_rtc_int_type_t int_type)
     }
 
     // looking for 500 ticks of no keys pressed, to go back to deep sleep
-    if (read_keys() == 0)
+    read_keys();
+    if (check_pressed() == 0)
     {
         activity_ticks++;
         if (activity_ticks > ACTIVITY)
@@ -223,6 +231,8 @@ void GPIOTE_IRQHandler(void)
 {
     if(NRF_GPIOTE->EVENTS_PORT)
     {
+        nrf_gpio_pin_clear(R05);
+
         //clear wakeup event
         NRF_GPIOTE->EVENTS_PORT = 0;
 
@@ -233,6 +243,8 @@ void GPIOTE_IRQHandler(void)
         debouncing = false;
         debounce_ticks = 0;
         activity_ticks = 0;
+
+        nrf_gpio_pin_set(R05);
     }
 }
 
