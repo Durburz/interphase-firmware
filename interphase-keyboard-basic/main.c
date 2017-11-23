@@ -41,13 +41,13 @@ static volatile bool init_ok, enable_ok, push_ok, pop_ok, tx_success;
 // Setup switch pins with pullups
 static void gpio_config(void)
 {
-    nrf_gpio_cfg_sense_input(C01, NRF_GPIO_PIN_PULLUP, NRF_GPIO_PIN_SENSE_LOW);
-    nrf_gpio_cfg_sense_input(C02, NRF_GPIO_PIN_PULLUP, NRF_GPIO_PIN_SENSE_LOW);
-    nrf_gpio_cfg_sense_input(C03, NRF_GPIO_PIN_PULLUP, NRF_GPIO_PIN_SENSE_LOW);
-    nrf_gpio_cfg_sense_input(C04, NRF_GPIO_PIN_PULLUP, NRF_GPIO_PIN_SENSE_LOW);
-    nrf_gpio_cfg_sense_input(C05, NRF_GPIO_PIN_PULLUP, NRF_GPIO_PIN_SENSE_LOW);
-    nrf_gpio_cfg_sense_input(C06, NRF_GPIO_PIN_PULLUP, NRF_GPIO_PIN_SENSE_LOW);
-    nrf_gpio_cfg_sense_input(C07, NRF_GPIO_PIN_PULLUP, NRF_GPIO_PIN_SENSE_LOW);
+    nrf_gpio_cfg_sense_input(C01, NRF_GPIO_PIN_PULLDOWN, NRF_GPIO_PIN_SENSE_HIGH);
+    nrf_gpio_cfg_sense_input(C02, NRF_GPIO_PIN_PULLDOWN, NRF_GPIO_PIN_SENSE_HIGH);
+    nrf_gpio_cfg_sense_input(C03, NRF_GPIO_PIN_PULLDOWN, NRF_GPIO_PIN_SENSE_HIGH);
+    nrf_gpio_cfg_sense_input(C04, NRF_GPIO_PIN_PULLDOWN, NRF_GPIO_PIN_SENSE_HIGH);
+    nrf_gpio_cfg_sense_input(C05, NRF_GPIO_PIN_PULLDOWN, NRF_GPIO_PIN_SENSE_HIGH);
+    nrf_gpio_cfg_sense_input(C06, NRF_GPIO_PIN_PULLDOWN, NRF_GPIO_PIN_SENSE_HIGH);
+    nrf_gpio_cfg_sense_input(C07, NRF_GPIO_PIN_PULLDOWN, NRF_GPIO_PIN_SENSE_HIGH);
 
     nrf_gpio_cfg_output(R01);
     nrf_gpio_cfg_output(R02);
@@ -61,7 +61,7 @@ static uint32_t read_row(uint32_t row)
 {
     uint32_t buff;
     nrf_gpio_pin_set(row);
-    buff = ~NRF_GPIO->IN & INPUT_MASK;
+    buff = NRF_GPIO->IN & INPUT_MASK;
     nrf_gpio_pin_clear(row);
     return buff;
 }
