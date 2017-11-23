@@ -60,9 +60,9 @@ static void gpio_config(void)
 static uint32_t read_row(uint32_t row)
 {
     uint32_t buff;
-    nrf_gpio_set(row);
+    nrf_gpio_pin_set(row);
     buff = ~NRF_GPIO->IN & INPUT_MASK;
-    nrf_gpio_pin_toggle(row);
+    nrf_gpio_pin_clear(row);
     return buff;
 }
 
