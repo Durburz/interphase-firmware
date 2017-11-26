@@ -10,6 +10,11 @@
 #include "nrf_drv_clock.h"
 #include "nrf_drv_rtc.h"
 
+/*****************************************************************************/
+/** Configuration */
+/*****************************************************************************/
+const nrf_drv_rtc_t rtc_maint = NRF_DRV_RTC_INSTANCE(0); /**< Declaring an instance of nrf_drv_rtc for RTC0. */
+
 // Define payload length
 #define TX_PAYLOAD_LENGTH ROWS ///< 5 byte payload length when transmitting
 
@@ -49,6 +54,7 @@ static uint8_t read_row(uint32_t row)
     buff = buff << 1 | nrf_gpio_pin_read(C05);
     buff = buff << 1 | nrf_gpio_pin_read(C06);
     buff = buff << 1 | nrf_gpio_pin_read(C07);
+    buff = buff << 1;
     nrf_gpio_pin_clear(row);
     return buff;
 }
@@ -70,6 +76,40 @@ static void send_data(void)
     nrf_gzll_add_packet_to_tx_fifo(PIPE_NUMBER, data_payload, TX_PAYLOAD_LENGTH);
 }
 
+// 8Hz held key maintenance, keeping the reciever keystates valid
+static void handler_maintenance(nrf_drv_rtc_int_type_t int_type)
+{
+    for(int i=0; i < ROWS; i++)
+    {
+        data_payload[i] = keys[i];
+    }
+    send_data();
+}
+
+// Low frequency clock configuration
+static void lfclk_config(void)
+{
+    nrf_drv_clock_init();
+
+    nrf_drv_clock_lfclk_request(NULL);
+}
+
+// RTC peripheral configuration
+static void rtc_config(void)
+{
+    //Initialize RTC instance
+    nrf_drv_rtc_init(&rtc_maint, NULL, handler_maintenance);
+    //nrf_drv_rtc_init(&rtc_deb, NULL, handler_debounce);
+
+    //Enable tick event & interrupt
+    nrf_drv_rtc_tick_enable(&rtc_maint,true);
+    //nrf_drv_rtc_tick_enable(&rtc_deb,true);
+
+    //Power on RTC instance
+    nrf_drv_rtc_enable(&rtc_maint);
+    //nrf_drv_rtc_enable(&rtc_deb);
+}
+
 int main()
 {
     // Initialize Gazell
@@ -85,6 +125,12 @@ int main()
     // Enable Gazell to start sending over the air
     nrf_gzll_enable();
 
+    // Configure 32kHz xtal oscillator
+    lfclk_config();
+
+    // Configure RTC peripherals with ticks
+    rtc_config();
+
     // Configure all keys as inputs with pullups
     gpio_config();
 
@@ -92,11 +138,12 @@ int main()
     while(1)
     {
         read_keys();
-        for(int i=0; i < ROWS; i++)
-        {
-            data_payload[i] = keys[i];
-        }
-        send_data();
+
+        //data_payload[0] = 0b11111111;
+        //send_data();
+
+        __SEV();
+        __WFE();
     }
 }
 
