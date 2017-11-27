@@ -1,6 +1,6 @@
 
-//#define COMPILE_RIGHT
-#define COMPILE_LEFT
+#define COMPILE_RIGHT
+//#define COMPILE_LEFT
 
 #include "interphase.h"
 #include "nrf_drv_config.h"
