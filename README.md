@@ -1,5 +1,7 @@
-# Mitosis Keyboard Firmware
-Firmware for Nordic MCUs used in the Mitosis Keyboard, contains precompiled .hex files, as well as sources buildable with the Nordic SDK
+# Interphase Keyboard Firmware
+Firmware for Nordic MCUs used in the Interphase Keyboard, contains precompiled .hex files, as well as sources buildable with the Nordic SDK
+This firmware is a dervivative of reversebias' mitosis firmware.
+https://github.com/reversebias/mitosis
 
 ## Install dependencies
 
@@ -36,12 +38,12 @@ GNU_INSTALL_ROOT := /usr/
 ## Clone repository
 Inside nRF5_SDK_11/
 ```
-git clone https://github.com/reversebias/mitosis
+git clone https://github.com/Durburz/interphase-firmware
 ```
 
 ## Install udev rules
 ```
-sudo cp mitosis/49-stlinkv2.rules /etc/udev/rules.d/
+sudo cp interphase-firmware/49-stlinkv2.rules /etc/udev/rules.d/
 ```
 Plug in, or replug in the programmer after this.
 
@@ -57,7 +59,7 @@ It's best to remove the battery during long sessions of debugging, as charging n
 
 Launch a debugging session with:
 ```
-openocd -f mitosis/nrf-stlinkv2.cfg
+openocd -f interphase-firmware/nrf-stlink.cfg
 ```
 Should give you an output ending in:
 ```
@@ -82,7 +84,7 @@ echo reset | telnet localhost 4444
 ## Automatic make and programming scripts
 To use the automatic build scripts:
 ```
-cd mitosis/mitosis-keyboard-basic
+cd mitosis/interphase-keyboard-basic
 ./program.sh
 ```
 An openocd session should be running in another terminal, as this script sends commands to it.
